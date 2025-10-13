@@ -1,5 +1,5 @@
 # Cofolding
-Scripts for co-folding (Chai-1, AF3, Boltz-2)
+Co-folding for prospective pose prediction and rescoring (Chai-1, AF3, Boltz-2)
 
 To run co-folding:
 - Use fold_input.json as a template for how protein sequence will be saved – just replace the sequence with protein-of-interest.
