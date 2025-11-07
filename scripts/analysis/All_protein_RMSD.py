@@ -23,6 +23,10 @@ def rmsd_calculation(input_dir, output_csv):
         prefix = os.path.splitext(ref_file)[0]
         pred_file = next((f for f in predicted_files if f.startswith(prefix) and "_pred_chainA" in f), None)
 
+        if pred_file is None:
+            print(f"[WARN] No predicted file found for {ref_file}; skipping.")
+            continue
+
         ref_path = os.path.join(input_dir, ref_file)
         pred_path = os.path.join(input_dir, pred_file)
 

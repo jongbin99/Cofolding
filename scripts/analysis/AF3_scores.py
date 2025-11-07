@@ -2,6 +2,7 @@ import os
 import glob
 import json
 import csv
+import argparse
 
 def af3_score(input_dir, csv_file):
     results = []

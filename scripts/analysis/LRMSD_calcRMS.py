@@ -5,10 +5,9 @@ import logging
 import pandas as pd
 import numpy as np
 from rdkit import Chem
-from rdkit.Chem import AllChem, rdFMCS
+from rdkit.Chem import AllChem
 from rdkit.Chem.rdMolAlign import CalcRMS
 from rdkit.Chem.rdmolops import RemoveHs, RemoveStereochemistry
-from rdkit.Chem.Draw import IPythonConsole
 from rdkit.Geometry import Point3D
 
 # Configure logging
@@ -17,62 +16,6 @@ logging.basicConfig(
     format='%(asctime)s - %(levelname)s - %(message)s'
 )
 logger = logging.getLogger(__name__)
-
-IPythonConsole.drawOptions.addAtomIndices = True
-
-def CalcLigRMSD(lig1, lig2, rename_lig2=True, output_filename="tmp.pdb"):
-    """
-    Calculate the Root-mean-square deviation (RMSD) between two prealigned ligands, 
-    even when atom names between the two ligands are not matching.
-    The symmetry of the molecules is taken into consideration. 
-    Moreover, if one ligand structure has missing atoms (e.g. undefined electron density in the crystal structure),
-    the RMSD is calculated for the maximum common substructure (MCS).
-
-    lig1 : RDKit molecule
-    lig2 : RDKit molecule
-    rmsd : float
-    """
-
-    # Exclude hydrogen atoms from the RMSD calculation
-    lig1 = Chem.RemoveHs(lig1)
-    lig2 = Chem.RemoveHs(lig2)
-
-    # Extract coordinates
-    coordinates_lig2 = lig2.GetConformer().GetPositions()
-    coordinates_lig1 = lig1.GetConformer().GetPositions()
-
-    # Calculate the RMSD between the MCS of lig1 and lig2
-    res = rdFMCS.FindMCS([lig1, lig2])
-    ref_mol = Chem.MolFromSmarts(res.smartsString)
-    mas1 = list(lig1.GetSubstructMatch(ref_mol))
-    mas2_list = lig2.GetSubstructMatches(ref_mol, uniquify=False)
-
-    if not mas1 or not mas2_list:
-        raise ValueError("No common substructure found between ligands")
-
-    # Reorder the coordinates of the ligands and calculate the RMSD
-    coordinates_lig1 = coordinates_lig1[mas1]
-    list_rmsd = []
-    for match1 in mas2_list:
-        coordinates_lig2_tmp = coordinates_lig2[list(match1)]
-        diff = coordinates_lig2_tmp - coordinates_lig1
-        list_rmsd.append(np.sqrt((diff * diff).sum() / len(coordinates_lig2_tmp)))
-
-    # Return the minimum RMSD
-    lig_rmsd = min(list_rmsd)
-    
-    # Write out a PDB file with matched atom names
-    if rename_lig2:
-        mas2 = mas2_list[np.argmin(list_rmsd)]
-        correspondence_key2_item1 = dict(zip(mas2, mas1))
-        atom_names_lig1 = [atom1.GetPDBResidueInfo().GetName() for atom1 in lig1.GetAtoms()]
-        lig1_ResName = lig1.GetAtoms()[0].GetPDBResidueInfo().GetResidueName()
-        for i, atom1 in enumerate(lig2.GetAtoms()):
-            atom1.GetPDBResidueInfo().SetResidueName(lig1_ResName)
-            if i in correspondence_key2_item1.keys():
-                atom1.GetPDBResidueInfo().SetName(atom_names_lig1[correspondence_key2_item1[i]])
-        Chem.MolToPDBFile(lig2, output_filename)
-    return lig_rmsd
 
 def get_com(mol):
     """Calculate center of mass for a molecule"""
@@ -171,12 +114,10 @@ def process_ligand_pair(ref_file, ref_dir, pred_dir, df, args):
 
     # Compute RMSD
     try:
-        calc_rmsd = CalcRMS(predicted, reference) #CalcRMS from RDkit
-        rmsd = CalcLigRMSD(predicted, reference, rename_lig2=args.rename_output, 
-                          output_filename=f"aligned_{ref_prefix}.pdb" if args.rename_output else "tmp.pdb") #adapted calcRMS to account for symmetry and missing atoms
+        calc_rmsd = CalcRMS(predicted, reference)  # CalcRMS from RDKit
         
-        logger.info(f"Success {ref_prefix}: CalcRMSD={calc_rmsd:.3f}, Corrected CalcRMSD={rmsd:.3f}, COM_dist={com_dist:.3f}")
-        return [ref_prefix, calc_rmsd, rmsd, com_dist]
+        logger.info(f"Success {ref_prefix}: CalcRMSD={calc_rmsd:.3f}, COM_dist={com_dist:.3f}")
+        return [ref_prefix, calc_rmsd, com_dist]
         
     except Exception as e:
         logger.error(f"Error calculating RMSD for {ref_prefix}: {e}")
@@ -197,6 +138,11 @@ def main():
                        help='Directory containing predicted/docked PDB files')
     parser.add_argument('--output', required=True,
                        help='Output CSV file path')
+    
+    # Optional arguments
+    parser.add_argument('--log-level', type=str, default='INFO',
+                       choices=['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL'],
+                       help='Set the logging level')
     
     args = parser.parse_args()
     
@@ -229,7 +175,7 @@ def main():
         try:
             with open(args.output, "w", newline="") as f:
                 writer = csv.writer(f)
-                writer.writerow(["ID", "CalcRMSD", "Corrected_CalcRMSD", "COM_Distance"])
+                writer.writerow(["ID", "CalcRMSD", "COM_Distance"])
                 writer.writerows(rmsd_results)
             logger.info(f"Successfully wrote {len(rmsd_results)} results to {args.output}")
         except Exception as e:
