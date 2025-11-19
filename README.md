@@ -24,7 +24,6 @@ Cofolding/
 │       ├── align_pdb_structures.py   # Align structures and extract ligands
 │       ├── calculate_similarity.py   # Calculate pairwise similarity (Tanimoto or MCS)
 │       ├── extract_smiles_from_lookup.py  # Extract SMILES from lookup table
-│       ├── plot_correlation.py       # Plot correlation scatter plots
 │       └── random_pki_generator.py   # Generate random pKi values
 └── jobs/
     ├── af3-job.sh                    # SLURM job script for AlphaFold3
@@ -77,8 +76,10 @@ python scripts/utils/process_pdb_residues.py \
 
 **Arguments:**
 - `--base-dir` (required): Base directory containing PDB files to process
-- `--new-start` (optional, default: 3): New starting residue number for renumbering
-- `--recursive`: Process PDB files in subdirectories recursively
+- `--new-start` (optional, default: 3): Residue number to assign to the first remaining residue
+- `--recursive` (optional): Process PDB files in subdirectories recursively
+
+**Note:** Reset your `new_start` to 3 if you want to renumber the residues starting from 1.
 
 ### 2. Protein RMSD Calculation
 
@@ -98,6 +99,8 @@ python scripts/analysis/All_protein_RMSD.py \
 
 **`align_pdb_structures.py`** - Align predicted to ground-truth structures and save the aligned predicted pose. Also retrieve ligand PDB file only.
 
+Aligns structures by protein backbone (Cα atoms) using PyMOL.
+
 ```bash
 python scripts/utils/align_pdb_structures.py \
     --complexes-dir reference_directory \
@@ -111,8 +114,8 @@ python scripts/utils/align_pdb_structures.py \
 - `--predicted-dir` (required): Directory containing predicted PDB files
 - `--aligned-dir` (required): Output directory for aligned structures
 - `--ligand-dir` (optional): Output directory for extracted ligand coordinates
-- `--ligand-label` (optional, default: " LIG "): String pattern to identify ligand lines
-- `--use-pymol-api` (optional): Use PyMOL Python API instead of subprocess
+- `--ligand-label` (optional, default: " LIG "): String pattern to identify ligand lines in PDB files
+- `--use-pymol-api` (optional): Use PyMOL Python API instead of subprocess (requires pymol module)
 - `--log-level` (optional): Set logging level (DEBUG, INFO, WARNING, ERROR, CRITICAL)
 
 ### 4. Ligand RMSD Calculation
@@ -136,6 +139,8 @@ python scripts/analysis/LRMSD_calcRMS.py \
 - `--output` (required): Output CSV file path
 - `--log-level` (optional): Set logging level (DEBUG, INFO, WARNING, ERROR, CRITICAL)
 
+**Output:** CSV file with columns: `ID`, `CalcRMSD`, `COM_Distance`
+
 ### 5. Chai-1 Confidence Metrics
 
 **`Chai_scores.py`** - Parse output for Chai-1 confidence metrics.
@@ -153,6 +158,8 @@ python scripts/analysis/Chai_scores.py \
 - `--output-file` (required): Output Excel file path
 - `--model-idx` (optional, default: 0): Model index for scores file (scores.model_idx_{model_idx}.npz)
 
+**Output:** Excel file with columns: `Index`, `Aggregate Score`, `iPTM`, `pTM`, `pTM per chain`, `iPTM per chain pair`, `Interchain clash?`, `Matrix chain-chain clashes`
+
 ### 6. AF3 Confidence Metrics
 
 **`AF3_scores.py`** - Parse output for AF3 confidence metrics.
@@ -168,6 +175,8 @@ python scripts/analysis/AF3_scores.py \
 **Arguments:**
 - `--input_dir` (required): Directory containing AF3 JSON output files
 - `--csv_file` (required): Output CSV file path
+
+**Output:** CSV file with columns: `Ligand`, `L-pLDDT`, `L-PAE`
 
 ### 7. Pairwise Similarity Calculation
 
@@ -197,6 +206,10 @@ python scripts/utils/calculate_similarity.py \
 - `--n-bits` (optional, default: 2048): Number of fingerprint bits for Tanimoto
 - `--decimals` (optional, default: 2): Number of decimal places in output
 - `--log-level` (optional): Set logging level (DEBUG, INFO, WARNING, ERROR, CRITICAL)
+
+**Output:** 
+- CSV file with pairwise similarity matrix (rows and columns labeled by molecule IDs)
+- Logs average similarity excluding self-comparisons
 
 ### 8. Random pKi Value Generator
 
@@ -236,6 +249,8 @@ python scripts/analysis/hitrate.py \
 - `--lower-is-better` (optional): Lower scores are better (overrides --higher-is-better)
 - `--method-name` (optional, default: "AF3"): Method name for plot legend
 - `--color` (optional, default: "tab:red"): Plot color
+- `--score-label` (optional): X-axis label (default: same as score column name)
+- `--title` (optional): Plot title (default: auto-generated with correlation)
 - `--output` (optional): Output file path for plot (if not provided, displays plot)
 - `--show-baseline` (optional): Show random baseline line
 
@@ -253,17 +268,13 @@ python scripts/utils/extract_smiles_from_lookup.py \
     --hits-status Hits
 ```
 
-### Plot Correlation
+**Arguments:**
+- `--lookup` (required): Path to lookup CSV file (e.g., Mols_labelled_hits.csv)
+- `--output` (required): Output .smi file path
+- `--target` (optional): Filter by Target column value (e.g., "AmpC")
+- `--hits-status` (optional): Filter by Hits_or_nonhits column value ("Hits" or "Non-hits")
 
-**`plot_correlation.py`** - Plot correlation scatter plots with color coding from Excel data.
-
-```bash
-python scripts/utils/plot_correlation.py \
-    --input data.xlsx \
-    --x-col "Boltz_LRMSD" \
-    --y-col "DOCK_LRMSD" \
-    --output correlation_plot.png
-```
+**Output:** .smi file with format: `SMILES ID` (space-separated, one per line)
 
 ## Additional Tools (Referenced but not included in this repository)
 
