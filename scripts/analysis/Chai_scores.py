@@ -1,44 +1,13 @@
-#!/usr/bin/env python3
-"""Extract Chai-1 scores from .npz files in .out directories.
-
-This script scans a base directory for .out subdirectories, extracts Chai-1 scores
-from scores.model_idx_0.npz files, and writes them to an Excel file.
-
-Usage
------
-
-    python Chai_scores.py \\
-        --base-directory /path/to/chaifold \\
-        --output-file chai_scores_idx_0.xlsx
-"""
 
 import argparse
 import glob
 import os
 import sys
-
 import numpy as np
 import pandas as pd
 
 
 def extract_chai_scores(base_directory, output_file, model_idx=0):
-    """
-    Extract Chai-1 scores from .npz files in .out directories.
-    
-    Parameters
-    ----------
-    base_directory : str
-        Base directory containing .out subdirectories
-    output_file : str
-        Output Excel file path
-    model_idx : int, default=0
-        Model index for scores file (scores.model_idx_{model_idx}.npz)
-    
-    Returns
-    -------
-    int
-        Exit code (0 for success, 1 for error)
-    """
     # Validate base directory
     if not os.path.isdir(base_directory):
         print(f"[ERROR] Base directory not found: {base_directory}", file=sys.stderr)

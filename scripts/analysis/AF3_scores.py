@@ -7,10 +7,12 @@ import argparse
 def af3_score(input_dir, csv_file):
     results = []
 
+    #loop through all the json files in the input directory
     for json_file in glob.glob(os.path.join(input_dir, "*.json")):
         with open(json_file, "r") as file:
             data = json.load(file)
-
+            
+        #get the atom_chain_ids, atom_plddts, token_chain_ids, and atom_pae from the json file
         atom_chain_ids = data.get("atom_chain_ids", [])
         atom_plddts   = data.get("atom_plddts", [])
         token_chain_ids = data.get("token_chain_ids", [])

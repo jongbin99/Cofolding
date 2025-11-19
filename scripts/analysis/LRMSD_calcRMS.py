@@ -9,6 +9,23 @@ from rdkit.Chem import AllChem
 from rdkit.Chem.rdMolAlign import CalcRMS
 from rdkit.Chem.rdmolops import RemoveHs, RemoveStereochemistry
 from rdkit.Geometry import Point3D
+"""
+Calculate the RMSD between a predicted and reference ligand structure, and the distance 
+between the centers of mass of the two molecules. 
+
+This script is used to calculate the LRMSD and COM distance for the ligands.
+
+The input is a .xlsx file with the following columns:
+- Dataset_ID: the ID of the ligand
+- SMILES: the SMILES of the ligand
+- Reference_PDB: the path to the reference PDB file
+- Predicted_PDB: the path to the predicted PDB file
+
+The output is a .csv file with the following columns:
+- Dataset_ID: the ID of the ligand
+- RMSD: the RMSD between the predicted and reference ligand structure
+- COM_Distance: the distance between the centers of mass of the two molecules
+"""
 
 # Configure logging
 logging.basicConfig(
@@ -18,24 +35,23 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 def get_com(mol):
-    """Calculate center of mass for a molecule"""
     conf = mol.GetConformer()
     coords = np.array([conf.GetAtomPosition(i) for i in range(mol.GetNumAtoms())])
     com_array = np.mean(coords, axis=0)
     return Point3D(float(com_array[0]), float(com_array[1]), float(com_array[2]))
 
 def calculate_com_distance(mol1, mol2):
-    """Calculate distance between centers of mass of two molecules"""
     com1 = get_com(mol1)
     com2 = get_com(mol2)
     return np.sqrt((com1.x - com2.x)**2 + (com1.y - com2.y)**2 + (com1.z - com2.z)**2)
 
 def process_ligand_pair(ref_file, ref_dir, pred_dir, df, args):
-    """Process a single ligand pair and return RMSD results"""
     
+    #check if the reference file is a .pdb file
     if not ref_file.endswith(".pdb"):
         return None
 
+    #get the prefix of the reference file
     ref_prefix = os.path.splitext(ref_file)[0]
     ref_path = os.path.join(ref_dir, ref_file)
     pred_path = os.path.join(pred_dir, f"{ref_prefix}.pdb")
@@ -45,7 +61,7 @@ def process_ligand_pair(ref_file, ref_dir, pred_dir, df, args):
         logger.warning(f"Predicted file not found: {pred_path}")
         return None
 
-    # Get SMILES from dataframe
+    # Get SMILES from dataframe (Check the column name is correct)
     smiles_row = df.loc[df['Dataset_ID'] == ref_prefix, 'SMILES']
     if smiles_row.empty:
         logger.warning(f"No SMILES found for {ref_prefix}")
@@ -76,7 +92,7 @@ def process_ligand_pair(ref_file, ref_dir, pred_dir, df, args):
         logger.error(f"Error loading predicted {pred_path}: {e}")
         return None
 
-    # Process molecules
+    # Process molecules (remove stereochemistry and hydrogen atoms)
     try:
         RemoveStereochemistry(reference)
         reference = RemoveHs(reference, sanitize=False)
@@ -86,14 +102,14 @@ def process_ligand_pair(ref_file, ref_dir, pred_dir, df, args):
         logger.error(f"Error removing stereochemistry for {ref_prefix}: {e}")
         return None
 
-    # Calculate COM distance
+    # Calculate COM distance 
     try:
         com_dist = calculate_com_distance(reference, predicted)   
     except Exception as e:
         logger.error(f"Error calculating COM distance for {ref_prefix}: {e}")
         return None
 
-    # Assign bond orders from template
+    # Assign bond orders from template (This is to ensure the atoms are aligned correctly)
     try:
         reference = AllChem.AssignBondOrdersFromTemplate(tmplt_mol, reference)
         predicted = AllChem.AssignBondOrdersFromTemplate(tmplt_mol, predicted)
@@ -101,7 +117,9 @@ def process_ligand_pair(ref_file, ref_dir, pred_dir, df, args):
         logger.error(f"Error assigning bond orders for {ref_prefix}: {e}")
         return None
 
-    # Align atom ordering by substructure match
+    # Align atom ordering by substructure match 
+    # This is to ensure that the predicted and reference structures have matching substructures
+
     try:
         match = predicted.GetSubstructMatch(reference)
         if not match:
@@ -115,7 +133,6 @@ def process_ligand_pair(ref_file, ref_dir, pred_dir, df, args):
     # Compute RMSD
     try:
         calc_rmsd = CalcRMS(predicted, reference)  # CalcRMS from RDKit
-        
         logger.info(f"Success {ref_prefix}: CalcRMSD={calc_rmsd:.3f}, COM_dist={com_dist:.3f}")
         return [ref_prefix, calc_rmsd, com_dist]
         

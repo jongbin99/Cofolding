@@ -3,6 +3,23 @@ import csv
 from pymol import cmd
 import argparse
 
+"""
+Calculate the RMSD between the reference and predicted protein structures.
+
+The input is a directory containing the reference and predicted PDB files.
+
+The output is a CSV file with the following columns:
+- Protein: the name of the protein
+- Full Structure RMSD (Å): the RMSD between the full structures
+- Pocket RMSD (Å): the RMSD between the pocket residues
+- Side-Chain RMSD (Å): the RMSD between the side chains
+- Backbone RMSD (Å): the RMSD between the backbone
+
+The pocket residues are defined as following locations: 21, 22, 23, 48, 49, 52, 125, 126, 129, 130, 154, 155, 156, 157, 160.
+
+This script is used to calculate the RMSD between the reference and predicted protein structures.
+"""
+
 def rmsd_calculation(input_dir, output_csv):
     reference_files = []
     predicted_files = []
@@ -44,7 +61,7 @@ def rmsd_calculation(input_dir, output_csv):
         ref_count = cmd.count_atoms(ref_object)
         pred_count = cmd.count_atoms(pred_object)
 
-#Align and compute total RMSD
+#Alignby protein backbone and compute total RMSD
         try:
             alignment_result = cmd.align(pred_object, ref_object)
             full_rmsd = alignment_result[0]

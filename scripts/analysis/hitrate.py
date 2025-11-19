@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """Calculate and plot rolling hit rate curves from Excel data.
 
 This script calculates rolling hit rates with Wilson 95% confidence intervals
@@ -76,26 +75,7 @@ def plot_rolling_hit_rate(
     title="Rolling hit-rate vs. score",
     output_path=None
 ):
-    """
-    Plot rolling hit-rate with Wilson 95% CI and optional baseline line.
-    
-    Parameters
-    ----------
-    roll_df : pd.DataFrame
-        DataFrame with columns: score, hit_rate, lo95, hi95, n
-    baseline : float, optional
-        Baseline hit rate to plot as horizontal line
-    method_name : str, default="AF3"
-        Method name for legend
-    color : str, default="tab:red"
-        Color for plot
-    score_label : str, default="Score"
-        X-axis label
-    title : str, default="Rolling hit-rate vs. score"
-        Plot title
-    output_path : str, optional
-        Path to save plot (if None, displays plot)
-    """
+
     plt.rcParams.update({
         "font.size": 14,
         "axes.labelsize": 16,

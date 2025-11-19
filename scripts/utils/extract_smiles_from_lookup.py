@@ -1,7 +1,6 @@
-#!/usr/bin/env python3
 """Extract SMILES and IDs from lookup table based on filters.
 
-This script extracts SMILES and IDs from a lookup CSV file (e.g., Mols_labelled_hits.csv)
+This script extracts SMILES and IDs from a lookup CSV file
 and writes them to a .smi file based on specified filters.
 
 Usage
@@ -9,7 +8,7 @@ Usage
 
     # Extract AmpC Hits
     python extract_smiles_from_lookup.py \\
-        --lookup /path/to/Mols_labelled_hits.csv \\
+        --lookup /path/to/lookup_table.csv \\
         --output ampc_hits.smi \\
         --target AmpC \\
         --hits-status Hits
@@ -24,30 +23,10 @@ Usage
 import argparse
 import sys
 from pathlib import Path
-
 import pandas as pd
 
 
 def extract_smiles(lookup_path, output_path, target=None, hits_status=None):
-    """
-    Extract SMILES and IDs from lookup table based on filters.
-    
-    Parameters
-    ----------
-    lookup_path : str
-        Path to lookup CSV file
-    output_path : str
-        Path to output .smi file
-    target : str, optional
-        Filter by Target column (e.g., 'AmpC')
-    hits_status : str, optional
-        Filter by Hits_or_nonhits column (e.g., 'Hits', 'Non-hits')
-    
-    Returns
-    -------
-    int
-        Number of entries extracted
-    """
     # Load lookup table
     try:
         df = pd.read_csv(lookup_path)
@@ -65,13 +44,13 @@ def extract_smiles(lookup_path, output_path, target=None, hits_status=None):
     
     for col in df.columns:
         col_upper = col.upper()
-        if col_upper in ['ID', 'ZINC_ID', 'MOLECULE_ID', 'ZINC', 'ZINCID']:
+        if col_upper in ['ID', 'ZINC_ID']:
             id_col = col
-        elif col_upper in ['SMILES', 'SMILES_STRING', 'SMILES_STR']:
+        elif col_upper == 'SMILES':
             smiles_col = col
         elif col_upper == 'TARGET':
             target_col = col
-        elif col_upper in ['HITS_OR_NONHITS', 'HITS_OR_NON_HITS', 'HIT_STATUS']:
+        elif col_upper == 'HITS_OR_NONHITS':
             hits_col = col
     
     # Check required columns
@@ -103,8 +82,6 @@ def extract_smiles(lookup_path, output_path, target=None, hits_status=None):
     
     # Drop rows with missing SMILES or ID
     filtered_df = filtered_df.dropna(subset=[smiles_col, id_col])
-    
-    # Remove duplicates (keep first)
     filtered_df = filtered_df.drop_duplicates(subset=[smiles_col, id_col], keep='first')
     
     if len(filtered_df) == 0:

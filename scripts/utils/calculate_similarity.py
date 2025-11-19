@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """Calculate molecular similarity matrices from SMILES files.
 
 This script computes pairwise similarity between molecules using either:
@@ -25,10 +24,10 @@ Usage
 
 import argparse
 import logging
+import itertools
 import sys
 from pathlib import Path
 from typing import List, Tuple
-
 import numpy as np
 import pandas as pd
 from rdkit import Chem
@@ -45,18 +44,7 @@ logger = logging.getLogger(__name__)
 
 
 def load_molecules_from_smi(file_path: str) -> Tuple[List[Chem.Mol], List[str]]:
-    """Load molecules and IDs from a .smi file.
-    
-    Parameters
-    ----------
-    file_path : str
-        Path to whitespace-delimited .smi file (col1=SMILES, col2=ID)
-        
-    Returns
-    -------
-    Tuple[List[Chem.Mol], List[str]]
-        List of RDKit molecule objects and corresponding IDs
-    """
+    # Read the SMILES file
     try:
         raw = pd.read_csv(
             file_path,
@@ -98,29 +86,10 @@ def load_molecules_from_smi(file_path: str) -> Tuple[List[Chem.Mol], List[str]]:
 
 def calculate_tanimoto_similarity(mols: List[Chem.Mol], ids: List[str], 
                                   radius: int = 2, n_bits: int = 2048) -> pd.DataFrame:
-    """Calculate pairwise Tanimoto similarity matrix.
-    
-    Parameters
-    ----------
-    mols : List[Chem.Mol]
-        List of RDKit molecule objects
-    ids : List[str]
-        List of molecule IDs
-    radius : int, default=2
-        Morgan fingerprint radius (ECFP4 = radius 2)
-    n_bits : int, default=2048
-        Number of bits in the fingerprint
-        
-    Returns
-    -------
-    pd.DataFrame
-        Symmetric similarity matrix with IDs as row/column labels
-    """
+    # Generate Morgan fingerprints
     logger.info(f"Generating Morgan fingerprints (radius={radius}, nBits={n_bits})...")
-    # Use the new MorganGenerator API (replaces deprecated GetMorganFingerprintAsBitVect)
     morgan_gen = rdFingerprintGenerator.GetMorganGenerator(radius=radius, fpSize=n_bits)
     fps = [morgan_gen.GetFingerprint(m) for m in mols]
-    
     logger.info("Computing pairwise Tanimoto similarity...")
     n = len(fps)
     sim_matrix = np.zeros((n, n), dtype=float)
@@ -138,22 +107,6 @@ def calculate_tanimoto_similarity(mols: List[Chem.Mol], ids: List[str],
 
 
 def calculate_mcs_overlap(mols: List[Chem.Mol], ids: List[str]) -> pd.DataFrame:
-    """Calculate pairwise MCS percentage overlap.
-    
-    Parameters
-    ----------
-    mols : List[Chem.Mol]
-        List of RDKit molecule objects
-    ids : List[str]
-        List of molecule IDs
-        
-    Returns
-    -------
-    pd.DataFrame
-        Symmetric similarity matrix with IDs as row/column labels
-    """
-    import itertools
-    
     logger.info("Computing pairwise MCS percentage overlap...")
     n = len(mols)
     mcs_matrix = pd.DataFrame(index=ids, columns=ids)
@@ -195,26 +148,12 @@ def calculate_mcs_overlap(mols: List[Chem.Mol], ids: List[str]) -> pd.DataFrame:
 
 
 def calculate_average_excluding_diagonal(df: pd.DataFrame) -> float:
-    """Calculate average similarity excluding diagonal (self-comparison) entries.
-    
-    Parameters
-    ----------
-    df : pd.DataFrame
-        Symmetric similarity matrix
-        
-    Returns
-    -------
-    float
-        Average similarity excluding diagonal entries
-    """
     # Convert to numpy array and mask diagonal
     matrix = df.values
     n = len(matrix)
     
     # Create mask to exclude diagonal
     mask = ~np.eye(n, dtype=bool)
-    
-    # Calculate mean excluding diagonal
     avg = matrix[mask].mean()
     return avg
 

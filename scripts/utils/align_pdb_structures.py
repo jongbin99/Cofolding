@@ -1,13 +1,19 @@
-#!/usr/bin/env python3
-"""Align predicted PDB structures to reference complexes using PyMOL.
+import argparse
+import logging
+import os
+import shutil
+import subprocess
+import sys
+import tempfile
+from typing import Optional
 
-This script replicates the alignment logic from `aligning_docked_exp.ipynb` and
-exposes it as a command-line tool. It uses PyMOL to align predicted structures
+"""Align predicted PDB structures to reference complexes based on protein backbone using PyMOL for a batch of structures.
+
+This script replicates the alignment logic from PyMOL to align predicted structures
 to reference complexes and optionally extracts ligand coordinates.
 
 Usage
 -----
-
     python align_pdb_structures.py \\
         --complexes-dir /path/to/reference \\
         --predicted-dir /path/to/predicted \\
@@ -23,15 +29,6 @@ The script will:
 Optional flags control whether to extract ligands and the ligand label to search for.
 """
 
-import argparse
-import logging
-import os
-import subprocess
-import sys
-import tempfile
-from pathlib import Path
-from typing import Optional
-
 # Configure logging
 logging.basicConfig(
     level=logging.INFO,
@@ -39,56 +36,34 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-
 def align_with_pymol_api(
     complex_path: str,
     predicted_path: str,
     aligned_path: str
 ) -> bool:
-    """Align structures using PyMOL Python API.
-    
-    Parameters
-    ----------
-    complex_path : str
-        Path to reference complex PDB file
-    predicted_path : str
-        Path to predicted PDB file
-    aligned_path : str
-        Output path for aligned structure
-        
-    Returns
-    -------
-    bool
-        True if alignment succeeded, False otherwise
-    """
     try:
         from pymol import cmd
         
-        # Initialize PyMOL
+        # Start PyMOL session and load structures
         cmd.reinitialize()
-        
-        # Load structures
         cmd.load(complex_path, "ref")
         cmd.load(predicted_path, "pred")
         
-        # Align
-        cmd.align("pred", "ref")
-        
-        # Save aligned structure
+        # Align by protein backbone (Cα atoms)
+        cmd.align("pred and name ca", "ref and name ca")
         cmd.save(aligned_path, "pred")
         
         # Clean up
         cmd.delete("ref")
         cmd.delete("pred")
-        
         return True
+    
     except ImportError:
         logger.debug("PyMOL Python API not available")
         return False
     except Exception as e:
         logger.debug(f"PyMOL API alignment failed: {e}")
         return False
-
 
 def align_and_extract(
     complexes_dir: str,
@@ -98,29 +73,6 @@ def align_and_extract(
     ligand_label: str = " LIG ",
     use_pymol_api: bool = False
 ):
-    """Align predicted PDB structures to reference complexes and optionally extract ligands.
-    
-    Parameters
-    ----------
-    complexes_dir : str
-        Directory containing reference/complex PDB files
-    predicted_dir : str
-        Directory containing predicted PDB files
-    aligned_dir : str
-        Output directory for aligned structures
-    ligand_dir : str, optional
-        If provided, extracts ligand entries to this directory
-    ligand_label : str, default=" LIG "
-        String pattern to identify ligand lines in PDB files
-    use_pymol_api : bool, default=False
-        If True, use PyMOL Python API instead of subprocess
-        
-    Returns
-    -------
-    int
-        Number of successfully processed structures
-    """
-    # Ensure output directories exist
     os.makedirs(aligned_dir, exist_ok=True)
     if ligand_dir:
         os.makedirs(ligand_dir, exist_ok=True)
@@ -132,16 +84,14 @@ def align_and_extract(
     except OSError as e:
         logger.error(f"Error reading directories: {e}")
         return 0
-    
     if not complex_files:
         logger.warning(f"No PDB files found in {complexes_dir}")
         return 0
-    
     if not predicted_files:
         logger.warning(f"No PDB files found in {predicted_dir}")
         return 0
     
-    # Find matching filenames in both folders
+    # Find matching filenames in both folders (their names should be the same)
     matching_files = complex_files.intersection(predicted_files)
     logger.info(f"Found {len(matching_files)} matching PDB files")
     
@@ -151,7 +101,6 @@ def align_and_extract(
     
     # Use a temporary directory for PyMOL scripts to avoid clutter
     temp_dir = tempfile.mkdtemp(prefix="pymol_align_")
-    
     success_count = 0
     failed_files = []
     
@@ -178,7 +127,7 @@ def align_and_extract(
                 # Use subprocess method
                 pymol_script = f"""load {complex_path}, complex
 load {predicted_path}, predicted
-align predicted, complex
+align predicted and name ca, complex and name ca
 save {aligned_pdb_path}, predicted
 quit
 """
@@ -227,7 +176,6 @@ quit
     
     # Clean up temporary directory
     try:
-        import shutil
         shutil.rmtree(temp_dir)
     except Exception as e:
         logger.debug(f"Could not remove temp directory {temp_dir}: {e}")

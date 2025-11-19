@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """Utilities for trimming and renumbering PDB files.
 
 This script replicates the residue filtering logic from the notebook
@@ -18,16 +17,12 @@ Optional flags allow recursion into sub-directories or changing the starting
 residue number.
 """
 
-from __future__ import annotations
-
 import argparse
 import os
 from typing import Iterable, Sequence, Tuple
 
-
 EXCLUDE_RANGES: Tuple[Tuple[int, int], ...] = ((1, 3), (171, 173))
 KEEP_TAGS: Tuple[str, ...] = ("LIG2", "LIG")
-
 
 def _should_exclude(residue_number: int,
                     ranges: Sequence[Tuple[int, int]]) -> bool:
@@ -65,7 +60,7 @@ def remove_residues(file_path: str,
     with open(file_path, "w", encoding="utf-8") as handle:
         handle.writelines(filtered)
 
-
+#reset your new_start to 3 if you want to renumber the residues starting from 1
 def renumber_residues(file_path: str, new_start: int = 3) -> None:
     """Renumber residues so the first residue starts at ``new_start``."""
 
