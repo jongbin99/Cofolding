@@ -7,10 +7,13 @@ Co-folding for prospective pose prediction and rescoring (Chai-1, AF3, Boltz-2)
 ```
 Cofolding/
 ├── README.md                          # This file
+├── WORKFLOW.md                        # Detailed workflow documentation
 ├── TROUBLESHOOTING.md                 # Troubleshooting guide
 ├── config/
-│   └── fold_input.json               # Template JSON for protein sequences
+│   ├── fold_input.json               # Template JSON for protein sequences
+│   └── workflow_config.json.example  # Example workflow configuration
 ├── scripts/
+│   ├── run_analysis_workflow.py      # Master workflow orchestration script
 │   ├── preprocessing/
 │   │   └── input_json_generator.py   # Generate input JSON files for co-folding
 │   ├── analysis/
@@ -31,6 +34,32 @@ Cofolding/
     ├── boltz-job.sh                  # SLURM job script for Boltz-2
     └── interactions_csv.sh           # Combine IFP results
 ```
+
+## Analysis Workflow
+
+The co-folding analysis pipeline consists of four main steps:
+
+1. **PDB File Processing** - Clean and renumber PDB files
+2. **Protein RMSD Calculation** - Calculate RMSD between reference and predicted protein structures
+3. **Structure Alignment and Ligand Extraction** - Align structures and extract ligand coordinates
+4. **Ligand RMSD Calculation** - Calculate RMSD and center of mass distance for ligands
+
+For detailed workflow documentation, see [WORKFLOW.md](WORKFLOW.md).
+
+### Quick Start: Running the Complete Workflow
+
+You can run the complete workflow using the master script:
+
+```bash
+# Using a configuration file
+python scripts/run_analysis_workflow.py --config config/workflow_config.json
+
+# Or run individual steps
+python scripts/run_analysis_workflow.py --step 1 --base-dir /path/to/pdbs
+python scripts/run_analysis_workflow.py --step 2 --input-dir /path/to/input --output-csv output.csv
+```
+
+See `config/workflow_config.json.example` for a template configuration file.
 
 ## Getting Started
 
