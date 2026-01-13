@@ -1,8 +1,5 @@
 """Utilities for trimming and renumbering PDB files.
 
-This script replicates the residue filtering logic from the notebook
-`handling_cif_pdb_files.ipynb` and exposes it as a command-line tool.
-
 Usage
 -----
 
