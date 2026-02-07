@@ -9,24 +9,21 @@
 ImportError: No module named rdkit.Chem
 ```
 
-**Solution:**
-Ensure you're using the correct Python environment with RDKit installed:
+**Solution:** Use a Python environment with RDKit installed:
 
 ```bash
-# Activate the py3.10 environment (common on HPC clusters)
-source /nfs/soft/anaconda3/bin/activate
+# Activate your conda environment (e.g. py3.10)
 conda activate py3.10
 
 # Verify RDKit is available
 python -c "import rdkit; print('RDKit version:', rdkit.__version__)"
 
-# Then run your script
-python ~ttummino/zzz.scripts/tc_and_clustering/get_fingerprints_bfc.py mac1.smi outname 0.35 557
+# Run scripts from the repo root; workflow scripts live in scripts/postprocessing/
+python scripts/postprocessing/get_fingerprints_bfc.py mac1.smi outname 0.35 557
 ```
 
-**Alternative Solutions:**
+**Alternative:** Install RDKit in your current environment:
 ```bash
-# Install RDKit in current environment
 conda install -c conda-forge rdkit
 # OR
 pip install rdkit-pypi
@@ -34,44 +31,61 @@ pip install rdkit-pypi
 
 ### Environment Setup Issues
 
-**Problem:** Different scripts require different Python environments
+**Problem:** Different scripts require different Python environments (e.g. RDKit, PyMOL, PoseBusters).
 
-**Solution:** Create a wrapper script or document required environments:
+**Solution:** Use a single environment with all dependencies, or document which script needs which env:
 
+- **Ligand/similarity (RDKit):** `scripts/postprocessing/calculate_similarity.py`, `LRMSD_calcRMS.py`, `get_fingerprints_*.py`, etc.
+- **Protein RMSD / alignment (PyMOL):** `scripts/postprocessing/All_protein_RMSD.py`, `align_pdb_structures.py`
+- **PoseBusters:** `scripts/postprocessing/posebusters.py` — requires PoseBusters and its env (e.g. `conda activate py3.10` and `pip show posebusters`)
+
+Create a small wrapper if needed:
 ```bash
 #!/bin/bash
-# activate_py310.sh
-source /nfs/soft/anaconda3/bin/activate
+# run_from_repo_root.sh
+cd /path/to/Cofolding
 conda activate py3.10
-export PATH="/nfs/home/.conda/envs/py3.10/bin:$PATH"
+python scripts/postprocessing/your_script.py "$@"
 ```
 
 ### Path Not Found Errors
 
-**Problem:** Scripts reference paths that don't exist in your environment
+**Problem:** Scripts or job scripts reference paths that don't exist.
 
-**Solution:** 
-1. Check the hardcoded paths in the script
-2. Update paths to match your cluster/filesystem structure
-3. For co-folding scripts in `jobs/`, update the directory paths before running
+**Solution:**
+1. Run workflow scripts from the **Cofolding repository root** so paths like `scripts/postprocessing/...` resolve.
+2. Use absolute paths in config files (e.g. `config/workflow_config.json`) for base dirs and output CSV paths.
+3. If you use **`jobs/`** (SLURM scripts for Chai-1, AF3, Boltz-2), edit the paths inside those scripts to match your cluster and project directories before submitting.
+
+### Workflow Script Not Found
+
+**Problem:** `run_analysis_workflow.py` or a step fails with "script not found".
+
+**Solution:** All step scripts live under **`scripts/postprocessing/`**:
+- Step 1: `scripts/postprocessing/process_pdb_residues.py`
+- Step 2: `scripts/postprocessing/All_protein_RMSD.py`
+- Step 3: `scripts/postprocessing/align_pdb_structures.py`
+- Step 4: `scripts/postprocessing/LRMSD_calcRMS.py`
+
+Ensure you have not removed or moved the `postprocessing/` folder. See [WORKFLOW.md](WORKFLOW.md) for full commands.
 
 ## Verification Checklist
 
-Before running co-folding or analysis scripts:
+Before running co-folding or analysis:
 
-- [ ] RDKit is installed and importable
-- [ ] PyMOL is available (for protein RMSD calculations)
-- [ ] Required data files exist (SMILES, PDB files, etc.)
+- [ ] RDKit is installed and importable (for ligand/similarity scripts)
+- [ ] PyMOL is available (for protein RMSD and alignment)
+- [ ] You are in or reference the Cofolding repo root so `scripts/postprocessing/` paths work
+- [ ] Required inputs exist (SMILES, PDBs, Excel with `Dataset_ID`/`SMILES` where needed)
 - [ ] Output directories are writable
-- [ ] SLURM job scripts have correct paths updated
-- [ ] Correct conda environment is activated
+- [ ] If using SLURM, job scripts in `jobs/` have paths updated for your environment
+- [ ] Correct conda/environment is activated
 
 ## Getting Help
 
-For additional issues:
-1. Check the main README.md for usage instructions
-2. Verify all dependencies are installed in your environment
-3. Check file permissions and path accessibility
-4. Review the script's command-line arguments with `--help`
+1. See [README.md](README.md) for setup and script overview.
+2. See [WORKFLOW.md](WORKFLOW.md) for the four-step analysis pipeline and exact commands.
+3. Run any script with `--help` for arguments (e.g. `python scripts/postprocessing/LRMSD_calcRMS.py --help`).
+4. Check file permissions and that paths in your config file are absolute and valid.
 
 

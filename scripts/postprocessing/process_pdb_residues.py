@@ -1,37 +1,41 @@
-"""Utilities for trimming and renumbering PDB files.
-
-Usage
------
-
-    python process_pdb_residues.py --base-dir /path/to/pdbs
-
-By default each PDB file in the provided directory is rewritten in-place.
-Non-`ATOM`/`HETATM` records are removed, residues 1-3 and 171-173 are
-discarded (unless they contain ``LIG``/``LIG2``) and the remaining residues
-are renumbered so that the first residue starts at index 3.
-
-Optional flags allow recursion into sub-directories or changing the starting
-residue number.
-"""
-
 import argparse
 import os
+import re
 from typing import Iterable, Sequence, Tuple
+import gemmi
 
 EXCLUDE_RANGES: Tuple[Tuple[int, int], ...] = ((1, 3), (171, 173))
 KEEP_TAGS: Tuple[str, ...] = ("LIG2", "LIG")
 
-def _should_exclude(residue_number: int,
-                    ranges: Sequence[Tuple[int, int]]) -> bool:
+
+def convert_cif_to_pdb(base_dir: str) -> None:
+    """Convert all .cif files under base_dir to .pdb (mirrors subdirs)."""
+    for root, _, files in os.walk(base_dir):
+        for fname in files:
+            if not fname.lower().endswith(".cif"):
+                continue
+
+            m = re.search(r"mac-x(\d+)", fname)
+            if not m:
+                continue
+
+            in_path = os.path.join(root, fname)
+            out_name = f"mac-x{m.group(1)}_pred_chain.pdb"
+            out_path = os.path.join(root, out_name)
+
+            structure = gemmi.read_structure(in_path)
+            structure.write_pdb(out_path)
+
+
+def _should_exclude(residue_number: int, ranges: Sequence[Tuple[int, int]]) -> bool:
     return any(start <= residue_number <= end for start, end in ranges)
 
 
-def remove_residues(file_path: str,
-                    keep_tags: Iterable[str] = KEEP_TAGS,
-                    exclude_ranges: Sequence[Tuple[int, int]] = EXCLUDE_RANGES
-                    ) -> None:
-    """Keep only ATOM/HETATM records and drop selected residue ranges."""
-
+def remove_residues(
+    file_path: str,
+    keep_tags: Iterable[str] = KEEP_TAGS,
+    exclude_ranges: Sequence[Tuple[int, int]] = EXCLUDE_RANGES,
+) -> None:
     with open(file_path, "r", encoding="utf-8") as handle:
         lines = handle.readlines()
 
@@ -43,12 +47,7 @@ def remove_residues(file_path: str,
             filtered.append(line)
             continue
 
-        try:
-            residue_number = int(line[22:26].strip())
-        except ValueError:
-            filtered.append(line)
-            continue
-
+        residue_number = int(line[22:26].strip())
         if _should_exclude(residue_number, exclude_ranges):
             continue
 
@@ -57,10 +56,8 @@ def remove_residues(file_path: str,
     with open(file_path, "w", encoding="utf-8") as handle:
         handle.writelines(filtered)
 
-#reset your new_start to 3 if you want to renumber the residues starting from 1
-def renumber_residues(file_path: str, new_start: int = 3) -> None:
-    """Renumber residues so the first residue starts at ``new_start``."""
 
+def renumber_residues(file_path: str, new_start: int = 3) -> None:
     resi_offset = None
     with open(file_path, "r", encoding="utf-8") as infile:
         lines = infile.readlines()
@@ -70,12 +67,7 @@ def renumber_residues(file_path: str, new_start: int = 3) -> None:
             if not line.startswith(("ATOM", "HETATM")):
                 continue
 
-            try:
-                residue_number = int(line[22:26].strip())
-            except ValueError:
-                outfile.write(line)
-                continue
-
+            residue_number = int(line[22:26].strip())
             if resi_offset is None:
                 resi_offset = new_start - residue_number
 
@@ -84,10 +76,8 @@ def renumber_residues(file_path: str, new_start: int = 3) -> None:
 
 
 def process_directory(base_dir: str, recursive: bool, new_start: int) -> None:
-    if not os.path.isdir(base_dir):
-        raise FileNotFoundError(f"Base directory does not exist: {base_dir}")
-
     paths: list[str] = []
+
     if recursive:
         for root, _, files in os.walk(base_dir):
             for name in files:
@@ -107,30 +97,43 @@ def process_directory(base_dir: str, recursive: bool, new_start: int) -> None:
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="Filter and renumber PDB files in a directory."
+        description="Convert Boltz CIFs to PDBs (optional), then filter + renumber PDBs in-place."
     )
     parser.add_argument(
         "--base-dir",
         required=True,
-        help="Directory containing PDB files to process."
+        help="Directory containing CIF/PDB files (conversion + processing happens here).",
+    )
+    parser.add_argument(
+        "--convert-cif",
+        action="store_true",
+        help="Convert all .cif files under base-dir to .pdb before processing.",
     )
     parser.add_argument(
         "--new-start",
         type=int,
-        default=3,
-        help="Residue number to assign to the first remaining residue (default: 3)."
+        default=1,
+        help="Residue number to assign to the first remaining residue (default: 1).",
     )
     parser.add_argument(
         "--recursive",
         action="store_true",
-        help="Process PDB files in subdirectories as well."
+        help="Process files in subdirectories as well.",
     )
     return parser.parse_args()
 
 
 def main() -> None:
     args = parse_args()
-    process_directory(args.base_dir, recursive=args.recursive, new_start=args.new_start)
+
+    if args.convert_cif:
+        convert_cif_to_pdb(args.base_dir)
+
+    process_directory(
+        args.base_dir,
+        recursive=args.recursive,
+        new_start=args.new_start,
+    )
 
 
 if __name__ == "__main__":

@@ -13,9 +13,9 @@ def process_smiles(input_json, smiles_file, output_dir):
     with open(input_json, 'r') as infile:
         base_json = json.load(infile)
 
-    df = pd.read_excel(smiles_file)  # xlsx file only
+    df = pd.read_excel(smiles_file)  # Use read_csv if it's a CSV file
 
-    # Iterate through the SMILES and create a JSON file for each (this will change if we want to model ternary complexes)
+    # Iterate through the SMILES and create a JSON file for each
     for index, row in df.iterrows():
         smiles = row['SMILES']
         dataset_id = row['Dataset_ID'] 

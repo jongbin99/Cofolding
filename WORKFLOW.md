@@ -59,7 +59,7 @@ The analysis pipeline consists of four main steps:
 ## Detailed Workflow Steps
 
 ### Step 1: PDB File Processing
-**Script:** `scripts/utils/process_pdb_residues.py`
+**Script:** `scripts/postprocessing/process_pdb_residues.py`
 
 Clean and renumber PDB files by removing specific residues and converting CIF to PDB format.
 
@@ -69,7 +69,7 @@ Clean and renumber PDB files by removing specific residues and converting CIF to
 
 **Command:**
 ```bash
-python scripts/utils/process_pdb_residues.py \
+python scripts/postprocessing/process_pdb_residues.py \
     --base-dir base_directory \
     --new-start starting_number
 ```
@@ -79,7 +79,7 @@ python scripts/utils/process_pdb_residues.py \
 ---
 
 ### Step 2: Protein RMSD Calculation
-**Script:** `scripts/analysis/All_protein_RMSD.py`
+**Script:** `scripts/postprocessing/All_protein_RMSD.py`
 
 Calculate RMSD between reference and predicted protein structures using PyMOL.
 
@@ -90,7 +90,7 @@ Calculate RMSD between reference and predicted protein structures using PyMOL.
 
 **Command:**
 ```bash
-python scripts/analysis/All_protein_RMSD.py \
+python scripts/postprocessing/All_protein_RMSD.py \
     --input_dir input_directory \
     --output_csv output.csv
 ```
@@ -105,7 +105,7 @@ python scripts/analysis/All_protein_RMSD.py \
 ---
 
 ### Step 3: Structure Alignment and Ligand Extraction
-**Script:** `scripts/utils/align_pdb_structures.py`
+**Script:** `scripts/postprocessing/align_pdb_structures.py`
 
 Align predicted structures to reference complexes and extract ligand coordinates.
 
@@ -115,7 +115,7 @@ Align predicted structures to reference complexes and extract ligand coordinates
 
 **Command:**
 ```bash
-python scripts/utils/align_pdb_structures.py \
+python scripts/postprocessing/align_pdb_structures.py \
     --complexes-dir reference_directory \
     --predicted-dir predicted_directory \
     --aligned-dir aligned_predicted_directory \
@@ -129,7 +129,7 @@ python scripts/utils/align_pdb_structures.py \
 ---
 
 ### Step 4: Ligand RMSD Calculation
-**Script:** `scripts/analysis/LRMSD_calcRMS.py`
+**Script:** `scripts/postprocessing/LRMSD_calcRMS.py`
 
 Calculate ligand RMSD and center of mass distance between experimental and predicted structures.
 
@@ -140,7 +140,7 @@ Calculate ligand RMSD and center of mass distance between experimental and predi
 
 **Command:**
 ```bash
-python scripts/analysis/LRMSD_calcRMS.py \
+python scripts/postprocessing/LRMSD_calcRMS.py \
     --excel excel.xlsx \
     --ref-dir reference_directory \
     --pred-dir predicted_directory \
@@ -156,28 +156,28 @@ python scripts/analysis/LRMSD_calcRMS.py \
 
 ## Complete Workflow Example
 
-Here's an example of running the complete workflow:
+Run from the repository root. All workflow scripts live under `scripts/postprocessing/`:
 
 ```bash
 # Step 1: Process PDB files
-python scripts/utils/process_pdb_residues.py \
+python scripts/postprocessing/process_pdb_residues.py \
     --base-dir /path/to/pdb_files \
     --new-start 3
 
 # Step 2: Calculate protein RMSD
-python scripts/analysis/All_protein_RMSD.py \
+python scripts/postprocessing/All_protein_RMSD.py \
     --input_dir /path/to/input_directory \
     --output_csv protein_rmsd.csv
 
 # Step 3: Align structures and extract ligands
-python scripts/utils/align_pdb_structures.py \
+python scripts/postprocessing/align_pdb_structures.py \
     --complexes-dir /path/to/reference_directory \
     --predicted-dir /path/to/predicted_directory \
     --aligned-dir /path/to/aligned_predicted_directory \
     --ligand-dir /path/to/aligned_ligand_directory
 
 # Step 4: Calculate ligand RMSD
-python scripts/analysis/LRMSD_calcRMS.py \
+python scripts/postprocessing/LRMSD_calcRMS.py \
     --excel ligands.xlsx \
     --ref-dir /path/to/reference_directory \
     --pred-dir /path/to/predicted_directory \
@@ -186,8 +186,9 @@ python scripts/analysis/LRMSD_calcRMS.py \
 
 ## Notes
 
-- Steps can be run independently if you have the required inputs
-- Step 3 (alignment) should be run before Step 4 (ligand RMSD) if you want to use aligned structures
-- The `starting_number` parameter in Step 1 defaults to 3, but can be adjusted based on your needs
-- All scripts support logging for debugging (use `--log-level` where available)
+- All four steps use scripts in **`scripts/postprocessing/`**. The master script `scripts/run_analysis_workflow.py` runs these steps in sequence (see README).
+- Steps can be run independently if you have the required inputs.
+- Step 3 (alignment) should be run before Step 4 (ligand RMSD) if you want to use aligned structures.
+- The `starting_number` parameter in Step 1 defaults to 3, but can be adjusted based on your needs.
+- Use `--log-level` where available for debugging.
 

@@ -130,7 +130,7 @@ See `config/workflow_config.json.example` for a config template.
 
 - **`postprocessing/AF3_scores.py`** – Parse AF3 JSON outputs → CSV (e.g. L-pLDDT, L-PAE).
 - **`postprocessing/Chai_scores.py`** – Parse Chai-1 output (e.g. `scores.model_idx_*.npz`) → Excel.
-- **`postprocessing/calc_mpae.py`** – mPAE calculation.
+- **`postprocessing/calc_mpae.py`** – mPAE calculation (for AF3)
 
 ### Similarity and clustering
 
@@ -140,8 +140,12 @@ See `config/workflow_config.json.example` for a config template.
 
 ### Other
 
-- **`postprocessing/posebusters.py`** – PoseBusters checks.
-- **`postprocessing/ifp_interactions.py`** – Interaction fingerprints. For multiple complexes, `jobs/interactions_csv.sh` can combine IFP results.
+- **`postprocessing/posebusters.py`** – PoseBusters checks with following lines under gimel:
+source /nfs/home/jkim/miniconda3/bin/activate
+conda activate py3.10
+pip show posebusters
+bust ***_predicted.sdf -l ***_reference.sdf protein.pdb --outfmt long
+
 
 ## Dependencies
 
@@ -152,6 +156,7 @@ See `config/workflow_config.json.example` for a config template.
 
 ## Notes
 
-- **Paths in `jobs/*.sh`** are environment-specific; update them before running.
+- All workflow and analysis scripts live under **`scripts/preprocessing/`** and **`scripts/postprocessing/`** (there is no `scripts/analysis/` or `scripts/utils/`).
+- **`jobs/`** (SLURM scripts for Chai-1, AF3, Boltz-2) is optional; if present, update paths inside the scripts for your cluster before running.
 - **Excel inputs** for ligand workflows must include `Dataset_ID` and `SMILES` where required.
-- For more detail and diagrams, see [WORKFLOW.md](WORKFLOW.md). For problems, see [TROUBLESHOOTING.md](TROUBLESHOOTING.md).
+- For the full pipeline and commands, see [WORKFLOW.md](WORKFLOW.md). For common issues, see [TROUBLESHOOTING.md](TROUBLESHOOTING.md).
