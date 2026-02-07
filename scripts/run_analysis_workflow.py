@@ -31,10 +31,10 @@ logger = logging.getLogger(__name__)
 # Script paths (relative to repository root)
 SCRIPTS_DIR = Path(__file__).parent
 REPO_ROOT = SCRIPTS_DIR.parent
-PROCESS_PDB = REPO_ROOT / "scripts" / "utils" / "process_pdb_residues.py"
-PROTEIN_RMSD = REPO_ROOT / "scripts" / "analysis" / "All_protein_RMSD.py"
-ALIGN_STRUCTURES = REPO_ROOT / "scripts" / "utils" / "align_pdb_structures.py"
-LIGAND_RMSD = REPO_ROOT / "scripts" / "analysis" / "LRMSD_calcRMS.py"
+PROCESS_PDB = REPO_ROOT / "scripts" / "postprocessing" / "process_pdb_residues.py"
+PROTEIN_RMSD = REPO_ROOT / "scripts" / "postprocessing" / "All_protein_RMSD.py"
+ALIGN_STRUCTURES = REPO_ROOT / "scripts" / "postprocessing" / "align_pdb_structures.py"
+LIGAND_RMSD = REPO_ROOT / "scripts" / "postprocessing" / "LRMSD_calcRMS.py"
 
 
 def run_step1_process_pdb(base_dir, new_start=3, recursive=False):
