@@ -1,7 +1,7 @@
 # Cofolding
 
 Pipeline for **co-folding** protein–ligand complexes (Chai-1, AlphaFold 3, Boltz-2) and for **analyzing** predicted poses: RMSD, confidence scores, similarity, and PCA.
-The ReadMe is organized using CursorAI
+readme.md, workflow.md and troubleshooting.md are all organized using CursorAI.
 
 ## Folder layout
 
