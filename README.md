@@ -1,162 +1,157 @@
 # Cofolding
 
-Pipeline for **co-folding** protein–ligand complexes with **Chai-1**, **AlphaFold 3 (AF3)**, and **Boltz-2**, and for analyzing predicted poses (RMSD, confidence scores, similarity, hit rates).
+Pipeline for **co-folding** protein–ligand complexes (Chai-1, AlphaFold 3, Boltz-2) and for **analyzing** predicted poses: RMSD, confidence scores, similarity, and PCA.
 
-## Overview
-
-This repository supports:
-
-- **Preparing inputs** (FASTA, JSON, YAML) and running co-folding jobs (SLURM scripts for Chai-1, AF3, Boltz-2).
-- **Processing structures** (PDB cleanup, alignment, ligand extraction).
-- **Analysis** (protein and ligand RMSD, confidence metrics, Tanimoto/MCS similarity, PCA, hit rate curves).
-
-For step-by-step flow and data dependencies, see [WORKFLOW.md](WORKFLOW.md). For common issues, see [TROUBLESHOOTING.md](TROUBLESHOOTING.md).
-
-## Repository structure
+## Folder layout
 
 ```
 Cofolding/
 ├── README.md
 ├── WORKFLOW.md
 ├── TROUBLESHOOTING.md
+├── .gitignore
 ├── config/
-│   ├── fold_input.json              # Template for protein sequence input
-│   └── workflow_config.json.example  # Example workflow config
-├── jobs/
-│   ├── af3-job.sh                   # SLURM: AlphaFold 3
-│   ├── boltz-job.sh                 # SLURM: Boltz-2
-│   ├── chai-job.sh                  # SLURM: Chai-1
-│   └── interactions_csv.sh          # Combine IFP results
+│   ├── fold_input.json
+│   └── workflow_config.json.example
 └── scripts/
-    ├── run_analysis_workflow.py     # Orchestrates full analysis pipeline
-    ├── preprocessing/              # Input generation and PDB prep
+    ├── run_analysis_workflow.py
+    ├── preprocessing/
     │   ├── fold_input.json
     │   ├── input_fasta_generator.py
     │   ├── input_json_generator.py
     │   ├── input_yaml_generator.py
     │   ├── make_of3_input.py
-    │   ├── process_pdb_residues.py   # Clean/renumber PDB; CIF→PDB
-    │   └── All_protein_RMSD.py       # Protein RMSD (PyMOL)
-    └── postprocessing/             # RMSD, scores, alignment, similarity, hit rates
-        ├── All_protein_RMSD.py       # Protein RMSD
-        ├── align_pdb_structures.py  # Align structures; extract ligands
-        ├── LRMSD_calcRMS.py          # Ligand RMSD (RDKit)
-        ├── AF3_scores.py             # AF3 confidence (L-pLDDT, L-PAE)
-        ├── Chai_scores.py            # Chai-1 confidence
-        ├── calc_mpae.py
+    │   ├── process_pdb_residues.py
+    │   └── All_protein_RMSD.py
+    └── postprocessing/
         ├── process_pdb_residues.py
-        ├── calculate_similarity.py   # Tanimoto or MCS matrix
-        ├── pca_plot.py               # PCA on similarity matrix
-        ├── posebusters.py
+        ├── All_protein_RMSD.py
+        ├── align_pdb_structures.py
+        ├── LRMSD_calcRMS.py
+        ├── AF3_scores.py
+        ├── Chai_scores.py
+        ├── calc_mpae.py
+        ├── calculate_similarity.py
+        ├── pca_plot.py
         ├── cluster_by_MCS.py
         ├── get_fingerprints_and_calc_tc_freechem.py
         ├── get_fingerprints_bfc.py
         ├── get_MCS_to_trained_set.py
-        └── ifp_interactions.py      # IFP; use jobs/interactions_csv.sh to combine
+        └── posebusters.py
 ```
+
+- **config/** — Input templates and workflow config example.
+- **scripts/preprocessing/** — Input generation (FASTA, JSON, YAML) and PDB prep; used before running co-folding.
+- **scripts/postprocessing/** — All analysis after co-folding: PDB cleanup, RMSD, alignment, scores, similarity, PCA, clustering, PoseBusters.
+- **scripts/run_analysis_workflow.py** — Runs the four-step analysis pipeline (see [WORKFLOW.md](WORKFLOW.md)).
 
 ## Quick start
 
-### 1. Inputs and co-folding
+### Inputs and co-folding
 
-- Put your protein sequence in `config/fold_input.json` (or use the template there).
-- For ligand-based runs, use an Excel file with at least `Dataset_ID` and `SMILES`.
+1. Set your protein sequence in **config/fold_input.json** (or **scripts/preprocessing/fold_input.json**).
+2. For ligand-based runs, use an Excel file with columns **Dataset_ID** and **SMILES**.
 
 Generate input JSONs for co-folding:
 
 ```bash
 python scripts/preprocessing/input_json_generator.py \
-    --input_json config/fold_input.json \
-    --smiles_file ligands.xlsx \
-    --output_dir output_directory
+  --input_json config/fold_input.json \
+  --smiles_file ligands.xlsx \
+  --output_dir output_directory
 ```
 
-Run co-folding (edit paths in the job scripts first):
+Run your co-folding jobs (Chai-1, AF3, or Boltz-2) with your own cluster/SLURM setup as needed.
 
-```bash
-sbatch jobs/chai-job.sh    # Chai-1
-sbatch jobs/af3-job.sh     # AlphaFold 3
-sbatch jobs/boltz-job.sh    # Boltz-2
-```
+### Analysis workflow (four steps)
 
-### 2. Analysis workflow
-
-The analysis pipeline: (1) process PDBs, (2) protein RMSD, (3) align structures and extract ligands, (4) ligand RMSD.
-
-Using the orchestrator (uses a config file):
+From the repo root. Either use the orchestrator:
 
 ```bash
 python scripts/run_analysis_workflow.py --config config/workflow_config.json
 ```
 
-Running steps manually:
+Or run steps manually (all scripts in **scripts/postprocessing/**):
 
 ```bash
-# Step 1: Clean and renumber PDBs
+# 1. Clean and renumber PDBs
 python scripts/postprocessing/process_pdb_residues.py --base-dir /path/to/pdbs --new-start 3
 
-# Step 2: Protein RMSD
+# 2. Protein RMSD
 python scripts/postprocessing/All_protein_RMSD.py --input_dir /path/to/input --output_csv protein_rmsd.csv
 
-# Step 3: Align and extract ligands
+# 3. Align structures and extract ligands
 python scripts/postprocessing/align_pdb_structures.py \
-    --complexes-dir /path/to/reference \
-    --predicted-dir /path/to/predicted \
-    --aligned-dir /path/to/aligned \
-    --ligand-dir /path/to/ligands
+  --complexes-dir /path/to/reference \
+  --predicted-dir /path/to/predicted \
+  --aligned-dir /path/to/aligned \
+  --ligand-dir /path/to/ligands
 
-# Step 4: Ligand RMSD
+# 4. Ligand RMSD
 python scripts/postprocessing/LRMSD_calcRMS.py \
-    --excel ligands.xlsx --ref-dir /path/to/ref --pred-dir /path/to/pred --output ligand_rmsd.csv
+  --excel ligands.xlsx --ref-dir /path/to/ref --pred-dir /path/to/pred --output ligand_rmsd.csv
 ```
 
-See `config/workflow_config.json.example` for a config template.
+Use **config/workflow_config.json.example** as a template for the orchestrator.
 
-## Main scripts (by task)
+---
 
-### Preprocessing and PDB handling
+## Scripts by folder
 
-- **`preprocessing/input_json_generator.py`** – Build co-folding input JSON from `fold_input.json` and a SMILES/Excel file.
-- **`preprocessing/input_fasta_generator.py`**, **`input_yaml_generator.py`**, **`make_of3_input.py`** – Other input prep for folding.
-- **`postprocessing/process_pdb_residues.py`** – Clean PDBs (remove residues, renumber), convert CIF to PDB. Options: `--base-dir`, `--new-start`, `--recursive`.
+### config/
 
-### Structure comparison
+| File | Purpose |
+|------|--------|
+| **fold_input.json** | Template for protein sequence input. |
+| **workflow_config.json.example** | Example config for `run_analysis_workflow.py` (paths and step options). |
 
-- **`postprocessing/All_protein_RMSD.py`** – Protein RMSD (full, pocket, backbone, side chain) via PyMOL. Input dir: reference + predicted PDBs. Output: CSV.
-- **`postprocessing/align_pdb_structures.py`** – Align predicted to reference (Cα), write aligned PDBs and optional ligand-only PDBs.
-- **`postprocessing/LRMSD_calcRMS.py`** – Ligand RMSD and COM distance (RDKit). Requires Excel with `Dataset_ID` and `SMILES`; ref and pred PDB dirs.
+### scripts/preprocessing/
 
-### Confidence and scores
+| Script | Purpose |
+|--------|--------|
+| **input_json_generator.py** | Build co-folding input JSON from a fold template and SMILES/Excel file. |
+| **input_fasta_generator.py** | Generate FASTA inputs. |
+| **input_yaml_generator.py** | Generate YAML inputs. |
+| **make_of3_input.py** | Prepare input for OF3/co-folding. |
+| **process_pdb_residues.py** | Clean and renumber PDBs; CIF → PDB. |
+| **All_protein_RMSD.py** | Protein RMSD (PyMOL). |
 
-- **`postprocessing/AF3_scores.py`** – Parse AF3 JSON outputs → CSV (e.g. L-pLDDT, L-PAE).
-- **`postprocessing/Chai_scores.py`** – Parse Chai-1 output (e.g. `scores.model_idx_*.npz`) → Excel.
-- **`postprocessing/calc_mpae.py`** – mPAE calculation (for AF3)
+### scripts/postprocessing/
 
-### Similarity and clustering
+| Script | Purpose |
+|--------|--------|
+| **process_pdb_residues.py** | Clean/renumber PDBs; CIF → PDB (workflow step 1). |
+| **All_protein_RMSD.py** | Protein RMSD — full, pocket, backbone, side chain (workflow step 2). |
+| **align_pdb_structures.py** | Align predicted to reference; extract ligands (workflow step 3). |
+| **LRMSD_calcRMS.py** | Ligand RMSD and COM distance; needs Excel with Dataset_ID and SMILES (workflow step 4). |
+| **AF3_scores.py** | Parse AF3 JSON → CSV (e.g. L-pLDDT, L-PAE). |
+| **Chai_scores.py** | Parse Chai-1 output (e.g. scores.model_idx_*.npz) → Excel. |
+| **calc_mpae.py** | mPAE calculation. |
+| **calculate_similarity.py** | Pairwise similarity matrix (Tanimoto or MCS%) from a .smi file. |
+| **pca_plot.py** | PCA on a similarity matrix CSV; plot and results CSV. |
+| **cluster_by_MCS.py** | Clustering by MCS. |
+| **get_fingerprints_and_calc_tc_freechem.py** | Fingerprints and Tanimoto (RDKit/FreeChem). |
+| **get_fingerprints_bfc.py** | Fingerprints (BFc). |
+| **get_MCS_to_trained_set.py** | MCS to trained set. |
+| **posebusters.py** | PoseBusters checks (e.g. `bust pred.sdf -l ref.sdf protein.pdb --outfmt long`). |
 
-- **`postprocessing/calculate_similarity.py`** – Pairwise similarity matrix (Tanimoto or MCS%) from a `.smi` file. Options: `--method tanimoto|mcs`, `--radius`, `--n-bits`, etc.
-- **`postprocessing/pca_plot.py`** – PCA on a similarity matrix CSV; saves scatter plot and PCA results CSV. No lookup/labels.
-- **`postprocessing/cluster_by_MCS.py`**, **`get_MCS_to_trained_set.py`**, **`get_fingerprints_*.py`** – MCS and fingerprint-based analysis.
+Run any script with `--help` for arguments.
 
-### Other
-
-- **`postprocessing/posebusters.py`** – PoseBusters checks with following lines under gimel:
-source /nfs/home/jkim/miniconda3/bin/activate
-conda activate py3.10
-pip show posebusters
-bust ***_predicted.sdf -l ***_reference.sdf protein.pdb --outfmt long
-
+---
 
 ## Dependencies
 
 - Python 3.x  
-- RDKit (ligand handling, similarity)  
-- PyMOL (protein RMSD, alignment)  
+- **RDKit** — ligand handling, similarity, fingerprints  
+- **PyMOL** — protein RMSD and alignment  
 - pandas, numpy, matplotlib, seaborn, scipy, scikit-learn  
 
-## Notes
+PoseBusters scripts need a separate PoseBusters environment (e.g. `conda activate <env>` and `pip show posebusters`).
 
-- All workflow and analysis scripts live under **`scripts/preprocessing/`** and **`scripts/postprocessing/`** (there is no `scripts/analysis/` or `scripts/utils/`).
-- **`jobs/`** (SLURM scripts for Chai-1, AF3, Boltz-2) is optional; if present, update paths inside the scripts for your cluster before running.
-- **Excel inputs** for ligand workflows must include `Dataset_ID` and `SMILES` where required.
-- For the full pipeline and commands, see [WORKFLOW.md](WORKFLOW.md). For common issues, see [TROUBLESHOOTING.md](TROUBLESHOOTING.md).
+---
+
+## More info
+
+- **Full pipeline and commands:** [WORKFLOW.md](WORKFLOW.md)  
+- **Common issues:** [TROUBLESHOOTING.md](TROUBLESHOOTING.md)  
+- **Excel:** Ligand workflows expect **Dataset_ID** and **SMILES** where noted.
